@@ -7,6 +7,18 @@ from logger import get_logger
 
 log = get_logger("voice_handler")
 
+# Patch VoiceClient.connect_websocket to log exceptions before py-cord swallows them
+_original_connect_ws = discord.VoiceClient.connect_websocket
+
+async def _patched_connect_ws(self):
+    try:
+        return await _original_connect_ws(self)
+    except Exception as e:
+        log.error(f"[VoiceDebug] connect_websocket failed: {type(e).__name__}: {e}", exc_info=True)
+        raise
+
+discord.VoiceClient.connect_websocket = _patched_connect_ws
+
 # Minimum WAV file bytes for MIN_AUDIO_SECONDS of audio
 # Formula: 44 (header) + 48000 * 2 channels * 2 bytes/sample * seconds
 def _min_bytes(seconds: float) -> int:
