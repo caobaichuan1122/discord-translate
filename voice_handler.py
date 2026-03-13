@@ -62,8 +62,8 @@ async def _dave_received_message(self, msg):
         await self.send_as_json({"op": 23, "d": {"transition_id": transition_id}})
         await self._hook(self, msg)
         return
-    if 22 <= op <= 31:  # Other DAVE opcodes
-        log.info(f"[DAVEPatch] Ignoring DAVE opcode {op}")
+    if op in (11, 15, 18, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31):
+        log.info(f"[DAVEPatch] Unknown opcode {op} data keys: {list(data.keys()) if isinstance(data, dict) else data}")
         await self._hook(self, msg)
         return
     await _orig_received_message(self, msg)
