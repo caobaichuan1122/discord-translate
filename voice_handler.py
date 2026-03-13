@@ -70,6 +70,21 @@ async def _dave_received_message(self, msg):
 
 _discord_gateway.DiscordVoiceWebSocket.received_message = _dave_received_message
 
+# Patch decrypt to check if audio packets are arriving
+_orig_decrypt = discord.VoiceClient._decrypt_aead_xchacha20_poly1305_rtpsize
+
+def _patched_decrypt(self, header, data):
+    log.debug(f"[AudioDebug] Decrypting packet len={len(data)}")
+    try:
+        result = _orig_decrypt(self, header, data)
+        log.debug(f"[AudioDebug] Decrypt OK, result len={len(result) if result else 0}")
+        return result
+    except Exception as e:
+        log.error(f"[AudioDebug] Decrypt FAILED: {e}")
+        raise
+
+discord.VoiceClient._decrypt_aead_xchacha20_poly1305_rtpsize = _patched_decrypt
+
 # Keep connect_websocket debug logging
 _original_connect_ws = discord.VoiceClient.connect_websocket
 
