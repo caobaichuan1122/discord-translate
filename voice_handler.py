@@ -10,9 +10,12 @@ log = get_logger("voice_handler")
 # Patch for Discord DAVE protocol (E2EE voice, mandatory since late 2024)
 # Without dave_protocol_version in SELECT_PROTOCOL, Discord closes with 4017
 
-_orig_select_protocol = discord.gateway.DiscordVoiceWebSocket.select_protocol
+import discord.gateway as _discord_gateway
+
+_orig_select_protocol = _discord_gateway.DiscordVoiceWebSocket.select_protocol
 
 async def _dave_select_protocol(self, ip, port, mode):
+    log.info(f"[DAVEPatch] select_protocol called: ip={ip} port={port} mode={mode}")
     payload = {
         "op": self.SELECT_PROTOCOL,
         "d": {
@@ -22,26 +25,42 @@ async def _dave_select_protocol(self, ip, port, mode):
         },
     }
     await self.send_as_json(payload)
+    log.info("[DAVEPatch] SELECT_PROTOCOL sent with dave_protocol_version=1")
 
-discord.gateway.DiscordVoiceWebSocket.select_protocol = _dave_select_protocol
+_discord_gateway.DiscordVoiceWebSocket.select_protocol = _dave_select_protocol
 
-_orig_received_message = discord.gateway.DiscordVoiceWebSocket.received_message
+_orig_received_message = _discord_gateway.DiscordVoiceWebSocket.received_message
 
 async def _dave_received_message(self, msg):
     op = msg.get("op")
     data = msg.get("d") or {}
-    if op == 21:  # DAVE_PREPARE_TRANSITION: must ack or Discord closes with 4017
+    log.debug(f"[DAVEPatch] Voice WS opcode: {op}")
+    if op == 21:  # DAVE_PREPARE_TRANSITION
         transition_id = data.get("transition_id", 0)
         self.seq_ack = data.get("seq", getattr(self, "seq_ack", 0))
+        log.info(f"[DAVEPatch] DAVE_PREPARE_TRANSITION received, sending TRANSITION_READY transition_id={transition_id}")
         await self.send_as_json({"op": 23, "d": {"transition_id": transition_id}})
         await self._hook(self, msg)
         return
-    if 22 <= op <= 31:  # Other DAVE opcodes: ignore silently
+    if 22 <= op <= 31:  # Other DAVE opcodes
+        log.info(f"[DAVEPatch] Ignoring DAVE opcode {op}")
         await self._hook(self, msg)
         return
     await _orig_received_message(self, msg)
 
-discord.gateway.DiscordVoiceWebSocket.received_message = _dave_received_message
+_discord_gateway.DiscordVoiceWebSocket.received_message = _dave_received_message
+
+# Keep connect_websocket debug logging
+_original_connect_ws = discord.VoiceClient.connect_websocket
+
+async def _patched_connect_ws(self):
+    try:
+        return await _original_connect_ws(self)
+    except Exception as e:
+        log.error(f"[VoiceDebug] connect_websocket failed: {type(e).__name__}: {e}", exc_info=True)
+        raise
+
+discord.VoiceClient.connect_websocket = _patched_connect_ws
 
 # Minimum WAV file bytes for MIN_AUDIO_SECONDS of audio
 # Formula: 44 (header) + 48000 * 2 channels * 2 bytes/sample * seconds
