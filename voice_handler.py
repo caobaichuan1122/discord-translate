@@ -34,7 +34,18 @@ class VoiceHandler:
                 log.info(f"Connecting to channel {voice_channel.name}")
                 vc = await voice_channel.connect()
 
-            log.info(f"Connected to voice channel, vc={vc}, ws={vc.ws}")
+            # Wait for voice WebSocket to be fully ready
+            for i in range(20):
+                if vc.is_connected():
+                    break
+                log.debug(f"Waiting for voice WS to be ready... ({i+1}/20) ws={vc.ws}")
+                await asyncio.sleep(1)
+            else:
+                log.error("Voice WebSocket never became ready, aborting")
+                await vc.disconnect()
+                return
+
+            log.info(f"Voice WebSocket ready, ws={vc.ws}")
 
             self._sessions[guild_id] = {
                 "vc": vc,
@@ -42,8 +53,6 @@ class VoiceHandler:
                 "active": True,
             }
 
-            # Wait for voice WebSocket to fully initialize before recording
-            await asyncio.sleep(2)
             log.info(f"Creating recording loop task for guild {guild_id}")
             asyncio.create_task(self._recording_loop(guild_id))
         except Exception as e:
