@@ -36,6 +36,8 @@ class VoiceHandler:
             "active": True,
         }
 
+        # Wait for voice WebSocket to fully initialize before recording
+        await asyncio.sleep(2)
         asyncio.create_task(self._recording_loop(guild_id))
 
     async def stop(self, ctx: discord.ApplicationContext):
