@@ -65,27 +65,34 @@ class VoiceHandler:
 
         vc = session["vc"]
 
+        log.debug(f"Recording loop started for guild {guild_id}")
         while guild_id in self._sessions and self._sessions[guild_id]["active"]:
             try:
                 if not vc.is_connected():
+                    log.warning(f"Voice client disconnected for guild {guild_id}")
                     break
 
+                log.debug(f"Starting recording for guild {guild_id}")
                 sink = discord.sinks.WaveSink()
                 vc.start_recording(sink, on_finished)
 
                 await asyncio.sleep(config.RECORDING_INTERVAL)
 
                 if vc.recording:
+                    log.debug(f"Stopping recording for guild {guild_id}")
                     vc.stop_recording()
+                else:
+                    log.warning(f"vc.recording is False before stop for guild {guild_id}")
 
                 # Wait for callback (timeout = interval + 3s buffer)
                 finished_sink = await asyncio.wait_for(queue.get(), timeout=config.RECORDING_INTERVAL + 3)
+                log.debug(f"Got sink for guild {guild_id}")
                 asyncio.create_task(self._process_sink(finished_sink, guild_id))
 
             except asyncio.TimeoutError:
                 log.warning(f"Recording callback timed out for guild {guild_id}")
             except Exception as e:
-                log.error(f"Recording loop error: {e}")
+                log.error(f"Recording loop error: {e}", exc_info=True)
                 await asyncio.sleep(1)
 
     async def _process_sink(self, sink: discord.sinks.WaveSink, guild_id: int):
