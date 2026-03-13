@@ -34,15 +34,10 @@ class VoiceHandler:
                 log.info(f"Connecting to channel {voice_channel.name}")
                 vc = await voice_channel.connect()
 
-            # Wait for _connected threading.Event to be set (py-cord sets it after full handshake)
-            log.info(f"Waiting for voice connection to be fully ready...")
-            loop = asyncio.get_event_loop()
-            connected = await loop.run_in_executor(None, lambda: vc._connected.wait(30))
-            if not connected:
-                log.error("Voice connection timed out after 30s")
-                await vc.disconnect()
-                return
-            log.info(f"Voice connection ready, is_connected={vc.is_connected()}")
+            # Force _connected to bypass py-cord bug where it's never set
+            await asyncio.sleep(3)
+            vc._connected.set()
+            log.info(f"Voice connection forced ready, ws={vc.ws}")
 
             self._sessions[guild_id] = {
                 "vc": vc,
