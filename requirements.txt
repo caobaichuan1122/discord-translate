@@ -1,0 +1,9 @@
+# NOTE: Uninstall discord.py first if installed: pip uninstall discord.py
+# NOTE: Install ffmpeg separately: winget install ffmpeg
+# NOTE: For CPU-only PyTorch (no GPU): pip install torch --index-url https://download.pytorch.org/whl/cpu
+py-cord[voice]==2.6.1
+openai-whisper
+deep-translator
+openai>=1.0.0
+deepl
+python-dotenv
