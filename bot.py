@@ -49,7 +49,15 @@ async def settings(ctx: discord.ApplicationContext):
 async def translate(
     ctx: discord.ApplicationContext,
     text: discord.Option(str, "Text to translate", required=True),
-    target: discord.Option(str, "Target language code, e.g. zh en ja ko fr de (defaults to current setting)", required=False, default=None),
+    target: discord.Option(str, "Target language (defaults to current setting)", required=False, default=None, choices=[
+        discord.OptionChoice("Chinese", "zh"),
+        discord.OptionChoice("English", "en"),
+        discord.OptionChoice("Korean", "ko"),
+        discord.OptionChoice("Japanese", "ja"),
+        discord.OptionChoice("French", "fr"),
+        discord.OptionChoice("German", "de"),
+        discord.OptionChoice("Spanish", "es"),
+    ]),
 ):
     await ctx.defer()
     lang = target or config.TARGET_LANG
@@ -67,8 +75,7 @@ async def translate(
     embed.set_footer(text=f"Engine: {translator.name}")
     await ctx.followup.send(embed=embed)
 
-@bot.message_command(name="Translate Message")
-async def translate_message(ctx: discord.ApplicationContext, message: discord.Message):
+async def _translate_message_to(ctx: discord.ApplicationContext, message: discord.Message, lang: str):
     await ctx.defer(ephemeral=True)
     if not message.content:
         await ctx.followup.send("❌ This message has no text to translate.", ephemeral=True)
@@ -76,7 +83,7 @@ async def translate_message(ctx: discord.ApplicationContext, message: discord.Me
 
     translator = voice_handler._translator
     try:
-        result = await translator.translate(message.content, config.SOURCE_LANG, config.TARGET_LANG)
+        result = await translator.translate(message.content, "auto", lang)
     except Exception as e:
         log.error(f"Message translate error: {e}")
         await ctx.followup.send("❌ Translation failed, please try again.", ephemeral=True)
@@ -85,9 +92,21 @@ async def translate_message(ctx: discord.ApplicationContext, message: discord.Me
     embed = discord.Embed(color=discord.Color.green())
     embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
     embed.add_field(name="Original", value=message.content, inline=False)
-    embed.add_field(name=f"Translation ({config.TARGET_LANG})", value=result, inline=False)
+    embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
     embed.set_footer(text=f"Engine: {translator.name}")
     await ctx.followup.send(embed=embed, ephemeral=True)
+
+@bot.message_command(name="Translate → Chinese")
+async def translate_to_zh(ctx: discord.ApplicationContext, message: discord.Message):
+    await _translate_message_to(ctx, message, "zh")
+
+@bot.message_command(name="Translate → English")
+async def translate_to_en(ctx: discord.ApplicationContext, message: discord.Message):
+    await _translate_message_to(ctx, message, "en")
+
+@bot.message_command(name="Translate → Korean")
+async def translate_to_ko(ctx: discord.ApplicationContext, message: discord.Message):
+    await _translate_message_to(ctx, message, "ko")
 
 @bot.slash_command(description="Change the target translation language")
 async def set_lang(
