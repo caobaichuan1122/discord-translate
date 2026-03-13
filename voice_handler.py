@@ -74,13 +74,15 @@ _discord_gateway.DiscordVoiceWebSocket.received_message = _dave_received_message
 _orig_decrypt = discord.VoiceClient._decrypt_aead_xchacha20_poly1305_rtpsize
 
 def _patched_decrypt(self, header, data):
-    log.debug(f"[AudioDebug] Decrypting packet len={len(data)}")
+    import struct
+    ssrc = struct.unpack_from(">I", header, 8)[0] if len(header) >= 12 else "?"
+    map_keys = list(self.ssrc_map.keys())
     try:
         result = _orig_decrypt(self, header, data)
-        log.debug(f"[AudioDebug] Decrypt OK, result len={len(result) if result else 0}")
+        log.debug(f"[AudioDebug] ssrc={ssrc} len={len(data)}→{len(result) if result else 0} ssrc_map={map_keys}")
         return result
     except Exception as e:
-        log.error(f"[AudioDebug] Decrypt FAILED: {e}")
+        log.error(f"[AudioDebug] Decrypt FAILED ssrc={ssrc}: {e}")
         raise
 
 discord.VoiceClient._decrypt_aead_xchacha20_poly1305_rtpsize = _patched_decrypt
