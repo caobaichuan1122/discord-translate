@@ -7,17 +7,41 @@ from logger import get_logger
 
 log = get_logger("voice_handler")
 
-# Patch VoiceClient.connect_websocket to log exceptions before py-cord swallows them
-_original_connect_ws = discord.VoiceClient.connect_websocket
+# Patch for Discord DAVE protocol (E2EE voice, mandatory since late 2024)
+# Without dave_protocol_version in SELECT_PROTOCOL, Discord closes with 4017
 
-async def _patched_connect_ws(self):
-    try:
-        return await _original_connect_ws(self)
-    except Exception as e:
-        log.error(f"[VoiceDebug] connect_websocket failed: {type(e).__name__}: {e}", exc_info=True)
-        raise
+_orig_select_protocol = discord.gateway.DiscordVoiceWebSocket.select_protocol
 
-discord.VoiceClient.connect_websocket = _patched_connect_ws
+async def _dave_select_protocol(self, ip, port, mode):
+    payload = {
+        "op": self.SELECT_PROTOCOL,
+        "d": {
+            "protocol": "udp",
+            "data": {"address": ip, "port": port, "mode": mode},
+            "dave_protocol_version": 1,
+        },
+    }
+    await self.send_as_json(payload)
+
+discord.gateway.DiscordVoiceWebSocket.select_protocol = _dave_select_protocol
+
+_orig_received_message = discord.gateway.DiscordVoiceWebSocket.received_message
+
+async def _dave_received_message(self, msg):
+    op = msg.get("op")
+    data = msg.get("d") or {}
+    if op == 21:  # DAVE_PREPARE_TRANSITION: must ack or Discord closes with 4017
+        transition_id = data.get("transition_id", 0)
+        self.seq_ack = data.get("seq", getattr(self, "seq_ack", 0))
+        await self.send_as_json({"op": 23, "d": {"transition_id": transition_id}})
+        await self._hook(self, msg)
+        return
+    if 22 <= op <= 31:  # Other DAVE opcodes: ignore silently
+        await self._hook(self, msg)
+        return
+    await _orig_received_message(self, msg)
+
+discord.gateway.DiscordVoiceWebSocket.received_message = _dave_received_message
 
 # Minimum WAV file bytes for MIN_AUDIO_SECONDS of audio
 # Formula: 44 (header) + 48000 * 2 channels * 2 bytes/sample * seconds
