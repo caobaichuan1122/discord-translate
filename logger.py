@@ -20,7 +20,7 @@ def get_logger(name: str) -> logging.Logger:
 
     # Console handler
     console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
+    console.setLevel(logging.DEBUG)
     console.setFormatter(formatter)
 
     # File handler (10 MB per file, keep 5 backups)

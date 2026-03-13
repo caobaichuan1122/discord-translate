@@ -97,6 +97,8 @@ class VoiceHandler:
         guild = text_channel.guild
         min_size = _min_bytes(config.MIN_AUDIO_SECONDS)
 
+        log.debug(f"Processing sink: {len(sink.audio_data)} user(s) captured")
+
         for user_id, audio in sink.audio_data.items():
             audio_file: io.BytesIO = audio.file
 
@@ -104,7 +106,9 @@ class VoiceHandler:
             audio_file.seek(0, 2)
             size = audio_file.tell()
             audio_file.seek(0)
+            log.debug(f"User {user_id} audio size: {size} bytes (min: {min_size})")
             if size < min_size:
+                log.debug(f"Skipping user {user_id}: audio too short")
                 continue
 
             # STT
