@@ -42,7 +42,7 @@ class VoiceHandler:
         guild_id = ctx.guild.id
         session = self._sessions.get(guild_id)
         if not session:
-            await ctx.respond("机器人当前未在语音频道中。", ephemeral=True)
+            await ctx.respond("Bot is not currently in a voice channel.", ephemeral=True)
             return
 
         session["active"] = False
@@ -51,7 +51,7 @@ class VoiceHandler:
             vc.stop_recording()
         await vc.disconnect()
         del self._sessions[guild_id]
-        await ctx.respond("已停止翻译并离开语音频道。")
+        await ctx.respond("Stopped translating and left the voice channel.")
 
     async def _recording_loop(self, guild_id: int):
         session = self._sessions.get(guild_id)
@@ -122,7 +122,7 @@ class VoiceHandler:
                 translation = await self._translator.translate(text, config.SOURCE_LANG, config.TARGET_LANG)
             except Exception as e:
                 log.error(f"Translate error: {e}")
-                translation = "⚠️ 翻译失败"
+                translation = "⚠️ Translation failed"
 
             # Send embed to text channel
             member = guild.get_member(user_id)
@@ -131,8 +131,8 @@ class VoiceHandler:
 
             embed = discord.Embed(color=discord.Color.blurple())
             embed.set_author(name=display_name, icon_url=avatar_url)
-            embed.add_field(name="原文", value=text, inline=False)
-            embed.add_field(name=f"翻译 ({config.TARGET_LANG})", value=translation, inline=False)
-            embed.set_footer(text=f"STT: {self._stt.name} | 翻译: {self._translator.name}")
+            embed.add_field(name="Original", value=text, inline=False)
+            embed.add_field(name=f"Translation ({config.TARGET_LANG})", value=translation, inline=False)
+            embed.set_footer(text=f"STT: {self._stt.name} | Translate: {self._translator.name}")
 
             await text_channel.send(embed=embed)

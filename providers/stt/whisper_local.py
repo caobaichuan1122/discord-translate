@@ -4,6 +4,9 @@ import os
 import tempfile
 from .base import BaseSTT
 import config
+from logger import get_logger
+
+log = get_logger("whisper_local")
 
 # Known whisper hallucination phrases to filter out
 HALLUCINATION_PHRASES = {
@@ -19,9 +22,9 @@ class WhisperLocalSTT(BaseSTT):
     def _load_model(self):
         if self._model is None:
             import whisper
-            print(f"[Whisper] Loading model '{config.WHISPER_MODEL}' (first load may take a while)...")
+            log.info(f"Loading Whisper model '{config.WHISPER_MODEL}' (first load may take a while)...")
             self._model = whisper.load_model(config.WHISPER_MODEL)
-            print(f"[Whisper] Model loaded.")
+            log.info("Whisper model loaded.")
         return self._model
 
     async def transcribe(self, audio_file: io.BytesIO, source_lang: str = None) -> str:

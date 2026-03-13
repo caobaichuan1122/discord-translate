@@ -21,60 +21,59 @@ async def on_ready():
     log.info(f"Target Lang    : {config.TARGET_LANG}")
     log.info(f"Record Interval: {config.RECORDING_INTERVAL}s")
 
-@bot.slash_command(description="加入你所在的语音频道并开始实时翻译")
+@bot.slash_command(description="Join your voice channel and start real-time translation")
 async def join(ctx: discord.ApplicationContext):
     if not ctx.author.voice:
-        await ctx.respond("❌ 你需要先加入一个语音频道！", ephemeral=True)
+        await ctx.respond("❌ You need to join a voice channel first!", ephemeral=True)
         return
     channel = ctx.author.voice.channel
-    await ctx.respond(f"✅ 已加入 **{channel.name}**，开始翻译（每 {config.RECORDING_INTERVAL} 秒处理一次）...")
+    await ctx.respond(f"✅ Joined **{channel.name}**, translation started (every {config.RECORDING_INTERVAL}s)...")
     await voice_handler.start(ctx, channel)
 
-@bot.slash_command(description="停止翻译并离开语音频道")
+@bot.slash_command(description="Stop translating and leave the voice channel")
 async def leave(ctx: discord.ApplicationContext):
     await voice_handler.stop(ctx)
 
-@bot.slash_command(description="查看当前配置")
+@bot.slash_command(description="View current configuration")
 async def settings(ctx: discord.ApplicationContext):
-    embed = discord.Embed(title="⚙️ 当前配置", color=discord.Color.blue())
-    embed.add_field(name="STT 引擎", value=config.STT_PROVIDER.value, inline=True)
-    embed.add_field(name="翻译引擎", value=config.TRANSLATE_PROVIDER.value, inline=True)
-    embed.add_field(name="源语言", value=config.SOURCE_LANG, inline=True)
-    embed.add_field(name="目标语言", value=config.TARGET_LANG, inline=True)
-    embed.add_field(name="录音间隔", value=f"{config.RECORDING_INTERVAL} 秒", inline=True)
-    embed.add_field(name="Whisper 模型", value=config.WHISPER_MODEL, inline=True)
+    embed = discord.Embed(title="⚙️ Current Settings", color=discord.Color.blue())
+    embed.add_field(name="STT Engine", value=config.STT_PROVIDER.value, inline=True)
+    embed.add_field(name="Translate Engine", value=config.TRANSLATE_PROVIDER.value, inline=True)
+    embed.add_field(name="Source Language", value=config.SOURCE_LANG, inline=True)
+    embed.add_field(name="Target Language", value=config.TARGET_LANG, inline=True)
+    embed.add_field(name="Record Interval", value=f"{config.RECORDING_INTERVAL}s", inline=True)
+    embed.add_field(name="Whisper Model", value=config.WHISPER_MODEL, inline=True)
     await ctx.respond(embed=embed)
 
-@bot.slash_command(description="翻译一段文字")
+@bot.slash_command(description="Translate a text message")
 async def translate(
     ctx: discord.ApplicationContext,
-    text: discord.Option(str, "要翻译的文字", required=True),
-    target: discord.Option(str, "目标语言代码，如 zh en ja ko fr de（不填则用当前设置）", required=False, default=None),
+    text: discord.Option(str, "Text to translate", required=True),
+    target: discord.Option(str, "Target language code, e.g. zh en ja ko fr de (defaults to current setting)", required=False, default=None),
 ):
     await ctx.defer()
     lang = target or config.TARGET_LANG
+    translator = voice_handler._translator
     try:
-        from providers import get_translate_provider
-        translator = voice_handler._translator
         result = await translator.translate(text, config.SOURCE_LANG, lang)
     except Exception as e:
         log.error(f"Text translate error: {e}")
-        await ctx.respond("❌ 翻译失败，请稍后再试。", ephemeral=True)
+        await ctx.followup.send("❌ Translation failed, please try again.")
         return
 
     embed = discord.Embed(color=discord.Color.green())
-    embed.add_field(name="原文", value=text, inline=False)
-    embed.add_field(name=f"翻译 ({lang})", value=result, inline=False)
-    embed.set_footer(text=f"翻译引擎: {translator.name}")
-    await ctx.respond(embed=embed)
+    embed.add_field(name="Original", value=text, inline=False)
+    embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
+    embed.set_footer(text=f"Engine: {translator.name}")
+    await ctx.followup.send(embed=embed)
 
-@bot.slash_command(description="修改目标翻译语言")
+@bot.slash_command(description="Change the target translation language")
 async def set_lang(
     ctx: discord.ApplicationContext,
-    lang: discord.Option(str, "语言代码，如 zh en ja ko fr de", required=True)
+    lang: discord.Option(str, "Language code, e.g. zh en ja ko fr de", required=True)
 ):
     config.TARGET_LANG = lang
-    await ctx.respond(f"✅ 目标语言已设为 **{lang}**")
+    await ctx.respond(f"✅ Target language set to **{lang}**")
 
 if not config.DISCORD_TOKEN:
     print("[Error] DISCORD_TOKEN not set in .env file!")
