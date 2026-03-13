@@ -16,6 +16,12 @@ class TranslateProvider(str, Enum):
 # Discord
 DISCORD_TOKEN: str = os.getenv("DISCORD_TOKEN", "")
 
+# Allowlist: comma-separated guild IDs that are allowed to use this bot
+# Leave empty to allow all guilds (not recommended for private bots)
+# Example: ALLOWED_GUILDS=123456789,987654321
+_raw = os.getenv("ALLOWED_GUILDS", "")
+ALLOWED_GUILDS: set[int] = {int(g.strip()) for g in _raw.split(",") if g.strip()}
+
 # Provider selection
 STT_PROVIDER = STTProvider(os.getenv("STT_PROVIDER", "whisper_local"))
 TRANSLATE_PROVIDER = TranslateProvider(os.getenv("TRANSLATE_PROVIDER", "google_free"))

@@ -20,6 +20,18 @@ async def on_ready():
     log.info(f"Translate      : {config.TRANSLATE_PROVIDER.value}")
     log.info(f"Target Lang    : {config.TARGET_LANG}")
     log.info(f"Record Interval: {config.RECORDING_INTERVAL}s")
+    if config.ALLOWED_GUILDS:
+        log.info(f"Allowed guilds : {config.ALLOWED_GUILDS}")
+    else:
+        log.warning("ALLOWED_GUILDS is empty — bot will accept all servers")
+
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    if config.ALLOWED_GUILDS and guild.id not in config.ALLOWED_GUILDS:
+        log.warning(f"Unauthorized guild joined: {guild.name} ({guild.id}), leaving...")
+        await guild.leave()
+        return
+    log.info(f"Joined guild: {guild.name} ({guild.id})")
 
 @bot.slash_command(description="Join your voice channel and start real-time translation")
 async def join(ctx: discord.ApplicationContext):

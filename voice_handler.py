@@ -22,23 +22,32 @@ class VoiceHandler:
 
     async def start(self, ctx: discord.ApplicationContext, voice_channel: discord.VoiceChannel):
         guild_id = ctx.guild.id
+        log.info(f"Starting voice session for guild {guild_id}")
 
-        # Connect or move
-        if ctx.guild.voice_client:
-            vc = ctx.guild.voice_client
-            await vc.move_to(voice_channel)
-        else:
-            vc = await voice_channel.connect()
+        try:
+            # Connect or move
+            if ctx.guild.voice_client:
+                vc = ctx.guild.voice_client
+                log.info(f"Moving to channel {voice_channel.name}")
+                await vc.move_to(voice_channel)
+            else:
+                log.info(f"Connecting to channel {voice_channel.name}")
+                vc = await voice_channel.connect()
 
-        self._sessions[guild_id] = {
-            "vc": vc,
-            "text_channel": ctx.channel,
-            "active": True,
-        }
+            log.info(f"Connected to voice channel, vc={vc}, ws={vc.ws}")
 
-        # Wait for voice WebSocket to fully initialize before recording
-        await asyncio.sleep(2)
-        asyncio.create_task(self._recording_loop(guild_id))
+            self._sessions[guild_id] = {
+                "vc": vc,
+                "text_channel": ctx.channel,
+                "active": True,
+            }
+
+            # Wait for voice WebSocket to fully initialize before recording
+            await asyncio.sleep(2)
+            log.info(f"Creating recording loop task for guild {guild_id}")
+            asyncio.create_task(self._recording_loop(guild_id))
+        except Exception as e:
+            log.error(f"Failed to start voice session: {e}", exc_info=True)
 
     async def stop(self, ctx: discord.ApplicationContext):
         guild_id = ctx.guild.id
