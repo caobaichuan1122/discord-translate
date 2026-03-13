@@ -85,6 +85,16 @@ def _patched_decrypt(self, header, data):
 
 discord.VoiceClient._decrypt_aead_xchacha20_poly1305_rtpsize = _patched_decrypt
 
+# Patch unpack_audio to detect if UDP packets arrive at all (before any filtering)
+_orig_unpack_audio = discord.VoiceClient.unpack_audio
+
+def _patched_unpack_audio(self, data):
+    if len(data) > 1:
+        log.debug(f"[AudioDebug] unpack_audio len={len(data)} byte1=0x{data[1]:02x} paused={getattr(self, 'paused', '?')} mode={getattr(self, 'mode', '?')}")
+    return _orig_unpack_audio(self, data)
+
+discord.VoiceClient.unpack_audio = _patched_unpack_audio
+
 # Keep connect_websocket debug logging
 _original_connect_ws = discord.VoiceClient.connect_websocket
 
@@ -127,7 +137,8 @@ class VoiceHandler:
             # Force _connected to bypass py-cord bug where it's never set
             await asyncio.sleep(3)
             vc._connected.set()
-            log.info(f"Voice connection forced ready, ws={vc.ws}")
+            local_port = vc.socket.getsockname()[1] if vc.socket else "NO SOCKET"
+            log.info(f"Voice connection forced ready, ws={vc.ws} local_udp_port={local_port} mode={vc.mode}")
 
             self._sessions[guild_id] = {
                 "vc": vc,
