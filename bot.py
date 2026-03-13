@@ -2,6 +2,9 @@ import discord
 from discord.ext import commands
 import config
 from voice_handler import VoiceHandler
+from logger import get_logger
+
+log = get_logger("bot")
 
 intents = discord.Intents.default()
 intents.voice_states = True
@@ -12,11 +15,11 @@ voice_handler = VoiceHandler()
 
 @bot.event
 async def on_ready():
-    print(f"[Bot] Logged in as {bot.user}")
-    print(f"[Bot] STT Provider   : {config.STT_PROVIDER.value}")
-    print(f"[Bot] Translate      : {config.TRANSLATE_PROVIDER.value}")
-    print(f"[Bot] Target Lang    : {config.TARGET_LANG}")
-    print(f"[Bot] Record Interval: {config.RECORDING_INTERVAL}s")
+    log.info(f"Logged in as {bot.user}")
+    log.info(f"STT Provider   : {config.STT_PROVIDER.value}")
+    log.info(f"Translate      : {config.TRANSLATE_PROVIDER.value}")
+    log.info(f"Target Lang    : {config.TARGET_LANG}")
+    log.info(f"Record Interval: {config.RECORDING_INTERVAL}s")
 
 @bot.slash_command(description="加入你所在的语音频道并开始实时翻译")
 async def join(ctx: discord.ApplicationContext):

@@ -3,6 +3,9 @@ import io
 import discord
 import config
 from providers import get_stt_provider, get_translate_provider
+from logger import get_logger
+
+log = get_logger("voice_handler")
 
 # Minimum WAV file bytes for MIN_AUDIO_SECONDS of audio
 # Formula: 44 (header) + 48000 * 2 channels * 2 bytes/sample * seconds
@@ -14,8 +17,8 @@ class VoiceHandler:
         self._sessions: dict = {}  # guild_id -> session
         self._stt = get_stt_provider()
         self._translator = get_translate_provider()
-        print(f"[Bot] STT: {self._stt.name}")
-        print(f"[Bot] Translator: {self._translator.name}")
+        log.info(f"STT: {self._stt.name}")
+        log.info(f"Translator: {self._translator.name}")
 
     async def start(self, ctx: discord.ApplicationContext, voice_channel: discord.VoiceChannel):
         guild_id = ctx.guild.id
@@ -80,9 +83,9 @@ class VoiceHandler:
                 asyncio.create_task(self._process_sink(finished_sink, guild_id))
 
             except asyncio.TimeoutError:
-                print(f"[Warning] Recording callback timed out for guild {guild_id}")
+                log.warning(f"Recording callback timed out for guild {guild_id}")
             except Exception as e:
-                print(f"[Error] Recording loop error: {e}")
+                log.error(f"Recording loop error: {e}")
                 await asyncio.sleep(1)
 
     async def _process_sink(self, sink: discord.sinks.WaveSink, guild_id: int):
@@ -108,7 +111,7 @@ class VoiceHandler:
             try:
                 text = await self._stt.transcribe(audio_file, config.SOURCE_LANG)
             except Exception as e:
-                print(f"[STT Error] user={user_id}: {e}")
+                log.error(f"STT error user={user_id}: {e}")
                 continue
 
             if not text or len(text.strip()) < 2:
@@ -118,7 +121,7 @@ class VoiceHandler:
             try:
                 translation = await self._translator.translate(text, config.SOURCE_LANG, config.TARGET_LANG)
             except Exception as e:
-                print(f"[Translate Error]: {e}")
+                log.error(f"Translate error: {e}")
                 translation = "⚠️ 翻译失败"
 
             # Send embed to text channel
