@@ -34,18 +34,7 @@ class VoiceHandler:
                 log.info(f"Connecting to channel {voice_channel.name}")
                 vc = await voice_channel.connect()
 
-            # Wait for voice WebSocket to be fully ready
-            for i in range(20):
-                if vc.is_connected():
-                    break
-                log.debug(f"Waiting for voice WS to be ready... ({i+1}/20) ws={vc.ws}")
-                await asyncio.sleep(1)
-            else:
-                log.error("Voice WebSocket never became ready, aborting")
-                await vc.disconnect()
-                return
-
-            log.info(f"Voice WebSocket ready, ws={vc.ws}")
+            log.info(f"Voice client ready, starting recording loop")
 
             self._sessions[guild_id] = {
                 "vc": vc,
@@ -88,10 +77,6 @@ class VoiceHandler:
         log.debug(f"Recording loop started for guild {guild_id}")
         while guild_id in self._sessions and self._sessions[guild_id]["active"]:
             try:
-                if not vc.is_connected():
-                    log.warning(f"Voice client disconnected for guild {guild_id}")
-                    break
-
                 log.debug(f"Starting recording for guild {guild_id}")
                 sink = discord.sinks.WaveSink()
                 vc.start_recording(sink, on_finished)
