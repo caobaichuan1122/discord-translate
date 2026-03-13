@@ -22,7 +22,7 @@ TRANSLATE_PROVIDER = TranslateProvider(os.getenv("TRANSLATE_PROVIDER", "google_f
 
 # Language settings
 SOURCE_LANG: str = os.getenv("SOURCE_LANG", "auto")
-TARGET_LANG: str = os.getenv("TARGET_LANG", "zh")
+TARGET_LANG: str = os.getenv("TARGET_LANG", "zh-CN")
 
 # Whisper local settings
 WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "base")
