@@ -50,7 +50,8 @@ async def translate(
     ctx: discord.ApplicationContext,
     text: discord.Option(str, "Text to translate", required=True),
     target: discord.Option(str, "Target language (defaults to current setting)", required=False, default=None, choices=[
-        discord.OptionChoice("Chinese", "zh"),
+        discord.OptionChoice("Chinese (Simplified)", "zh-CN"),
+        discord.OptionChoice("Chinese (Traditional)", "zh-TW"),
         discord.OptionChoice("English", "en"),
         discord.OptionChoice("Korean", "ko"),
         discord.OptionChoice("Japanese", "ja"),
@@ -98,7 +99,7 @@ async def _translate_message_to(ctx: discord.ApplicationContext, message: discor
 
 @bot.message_command(name="Translate → Chinese")
 async def translate_to_zh(ctx: discord.ApplicationContext, message: discord.Message):
-    await _translate_message_to(ctx, message, "zh")
+    await _translate_message_to(ctx, message, "zh-CN")
 
 @bot.message_command(name="Translate → English")
 async def translate_to_en(ctx: discord.ApplicationContext, message: discord.Message):
