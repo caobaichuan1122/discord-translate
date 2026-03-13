@@ -24,7 +24,7 @@ async def _dave_identify(self):
             "user_id": str(state.user.id),
             "session_id": state.session_id,
             "token": state.token,
-            "max_dave_protocol_version": 0,
+            "max_dave_protocol_version": 1,
         },
     }
     log.info("[DAVEPatch] Sending IDENTIFY with max_dave_protocol_version=1")
