@@ -24,7 +24,7 @@ async def _dave_identify(self):
             "user_id": str(state.user.id),
             "session_id": state.session_id,
             "token": state.token,
-            "max_dave_protocol_version": 1,
+            "max_dave_protocol_version": 0,
         },
     }
     log.info("[DAVEPatch] Sending IDENTIFY with max_dave_protocol_version=1")
@@ -41,7 +41,7 @@ async def _dave_select_protocol(self, ip, port, mode):
         "d": {
             "protocol": "udp",
             "data": {"address": ip, "port": port, "mode": mode},
-            "dave_protocol_version": 1,
+            "dave_protocol_version": 0,
         },
     }
     await self.send_as_json(payload)
