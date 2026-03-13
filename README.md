@@ -4,10 +4,11 @@ A Discord bot that joins voice channels and provides real-time speech-to-text tr
 
 ## Features
 
-- Joins a voice channel and listens to speech
+- Joins a voice channel and provides real-time speech-to-text translation
+- Translates text messages directly via slash command
 - Transcribes audio using Whisper (local or OpenAI API)
-- Translates the transcription using Google Translate, DeepL, or OpenAI GPT
-- Outputs translated text to the text channel
+- Translates using Google Translate, DeepL, or OpenAI GPT
+- Outputs translated text as an embed in the text channel
 
 ## Slash Commands
 
@@ -15,6 +16,7 @@ A Discord bot that joins voice channels and provides real-time speech-to-text tr
 |---|---|
 | `/join` | Join your current voice channel and start translating |
 | `/leave` | Stop translating and leave the voice channel |
+| `/translate <text> [target]` | Translate a text message (optionally specify target language) |
 | `/settings` | View current configuration |
 | `/set_lang <code>` | Change target language (e.g. `zh`, `en`, `ja`, `ko`, `fr`) |
 

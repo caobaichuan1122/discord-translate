@@ -45,6 +45,29 @@ async def settings(ctx: discord.ApplicationContext):
     embed.add_field(name="Whisper 模型", value=config.WHISPER_MODEL, inline=True)
     await ctx.respond(embed=embed)
 
+@bot.slash_command(description="翻译一段文字")
+async def translate(
+    ctx: discord.ApplicationContext,
+    text: discord.Option(str, "要翻译的文字", required=True),
+    target: discord.Option(str, "目标语言代码，如 zh en ja ko fr de（不填则用当前设置）", required=False, default=None),
+):
+    await ctx.defer()
+    lang = target or config.TARGET_LANG
+    try:
+        from providers import get_translate_provider
+        translator = voice_handler._translator
+        result = await translator.translate(text, config.SOURCE_LANG, lang)
+    except Exception as e:
+        log.error(f"Text translate error: {e}")
+        await ctx.respond("❌ 翻译失败，请稍后再试。", ephemeral=True)
+        return
+
+    embed = discord.Embed(color=discord.Color.green())
+    embed.add_field(name="原文", value=text, inline=False)
+    embed.add_field(name=f"翻译 ({lang})", value=result, inline=False)
+    embed.set_footer(text=f"翻译引擎: {translator.name}")
+    await ctx.respond(embed=embed)
+
 @bot.slash_command(description="修改目标翻译语言")
 async def set_lang(
     ctx: discord.ApplicationContext,
