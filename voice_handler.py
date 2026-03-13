@@ -12,6 +12,26 @@ log = get_logger("voice_handler")
 
 import discord.gateway as _discord_gateway
 
+# Patch identify to include max_dave_protocol_version (required since late 2024)
+_orig_identify = _discord_gateway.DiscordVoiceWebSocket.identify
+
+async def _dave_identify(self):
+    state = self._connection
+    payload = {
+        "op": self.IDENTIFY,
+        "d": {
+            "server_id": str(state.server_id),
+            "user_id": str(state.user.id),
+            "session_id": state.session_id,
+            "token": state.token,
+            "max_dave_protocol_version": 1,
+        },
+    }
+    log.info("[DAVEPatch] Sending IDENTIFY with max_dave_protocol_version=1")
+    await self.send_as_json(payload)
+
+_discord_gateway.DiscordVoiceWebSocket.identify = _dave_identify
+
 _orig_select_protocol = _discord_gateway.DiscordVoiceWebSocket.select_protocol
 
 async def _dave_select_protocol(self, ip, port, mode):
