@@ -91,7 +91,10 @@ _orig_unpack_audio = discord.VoiceClient.unpack_audio
 def _patched_unpack_audio(self, data):
     if len(data) > 1:
         log.debug(f"[AudioDebug] unpack_audio len={len(data)} byte1=0x{data[1]:02x} paused={getattr(self, 'paused', '?')} mode={getattr(self, 'mode', '?')}")
-    return _orig_unpack_audio(self, data)
+    try:
+        return _orig_unpack_audio(self, data)
+    except Exception as e:
+        log.error(f"[AudioDebug] unpack_audio EXCEPTION: {type(e).__name__}: {e}", exc_info=True)
 
 discord.VoiceClient.unpack_audio = _patched_unpack_audio
 
