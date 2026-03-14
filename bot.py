@@ -167,6 +167,75 @@ async def translate_to_my_lang(ctx: discord.ApplicationContext, message: discord
     except Exception as e:
         log.error(f"[MyLang] error: {e}", exc_info=True)
 
+async def _do_reaction_translate(message: discord.Message, lang: str):
+    translator = voice_handler._translator
+    try:
+        result = await translator.translate(message.content, "auto", lang)
+    except Exception as e:
+        log.error(f"[Reaction] translate error: {e}")
+        return
+    embed = discord.Embed(color=discord.Color.green())
+    embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
+    embed.add_field(name="Original", value=message.content, inline=False)
+    embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
+    embed.set_footer(text=f"Engine: {voice_handler._translator.name}")
+    try:
+        await message.reply(embed=embed)
+    except Exception as e:
+        log.error(f"[Reaction] reply failed: {e}", exc_info=True)
+
+
+class _LanguageSelectView(discord.ui.View):
+    _OPTIONS = [
+        discord.SelectOption(label="Chinese (Simplified)", value="zh-CN", emoji="🇨🇳"),
+        discord.SelectOption(label="Chinese (Traditional)", value="zh-TW", emoji="🇹🇼"),
+        discord.SelectOption(label="English", value="en", emoji="🇺🇸"),
+        discord.SelectOption(label="Japanese", value="ja", emoji="🇯🇵"),
+        discord.SelectOption(label="Korean", value="ko", emoji="🇰🇷"),
+        discord.SelectOption(label="French", value="fr", emoji="🇫🇷"),
+        discord.SelectOption(label="Thai", value="th", emoji="🇹🇭"),
+        discord.SelectOption(label="German", value="de", emoji="🇩🇪"),
+        discord.SelectOption(label="Spanish", value="es", emoji="🇪🇸"),
+        discord.SelectOption(label="Russian", value="ru", emoji="🇷🇺"),
+        discord.SelectOption(label="Vietnamese", value="vi", emoji="🇻🇳"),
+        discord.SelectOption(label="Indonesian", value="id", emoji="🇮🇩"),
+        discord.SelectOption(label="Arabic", value="ar", emoji="🇸🇦"),
+    ]
+
+    def __init__(self, message: discord.Message, reactor_id: int):
+        super().__init__(timeout=30)
+        self.message = message
+        self.reactor_id = reactor_id
+
+    @discord.ui.select(placeholder="选择语言 / Select language...", options=_OPTIONS)
+    async def select_language(self, select: discord.ui.Select, interaction: discord.Interaction):
+        if interaction.user.id != self.reactor_id:
+            await interaction.response.send_message("❌ 这不是给你的选择。", ephemeral=True)
+            return
+
+        lang = select.values[0]
+        _user_lang[self.reactor_id] = lang
+        self.stop()
+
+        translator = voice_handler._translator
+        try:
+            result = await translator.translate(self.message.content, "auto", lang)
+        except Exception as e:
+            log.error(f"[LangSelect] translate error: {e}")
+            await interaction.response.edit_message(content="❌ 翻译失败。", view=None)
+            return
+
+        embed = discord.Embed(color=discord.Color.green())
+        embed.set_author(name=self.message.author.display_name, icon_url=self.message.author.display_avatar.url)
+        embed.add_field(name="Original", value=self.message.content, inline=False)
+        embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
+        embed.set_footer(text=f"✅ 语言已保存 | Engine: {translator.name}")
+        await interaction.response.edit_message(content=None, embed=embed, view=None)
+
+    async def on_timeout(self):
+        pass
+
+
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     log.info(f"[Reaction] emoji={str(payload.emoji)!r} user={payload.user_id}")
@@ -193,25 +262,13 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
         log.warning("[Reaction] message has no text content, skipping")
         return
 
-    lang = _get_lang_for_user(payload.user_id)
-    translator = voice_handler._translator
-    try:
-        result = await translator.translate(message.content, "auto", lang)
-    except Exception as e:
-        log.error(f"[Reaction] translate error: {e}")
+    if payload.user_id not in _user_lang:
+        # First time: show language selection
+        view = _LanguageSelectView(message, payload.user_id)
+        await message.reply(f"<@{payload.user_id}> 请选择你的翻译目标语言（之后 🌐 将自动翻译）：", view=view)
         return
 
-    log.info(f"[Reaction] translation result={result!r}")
-    embed = discord.Embed(color=discord.Color.green())
-    embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
-    embed.add_field(name="Original", value=message.content, inline=False)
-    embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
-    embed.set_footer(text=f"Engine: {translator.name} | React with 🌐 to translate")
-    try:
-        await message.reply(embed=embed)
-        log.info("[Reaction] reply sent successfully")
-    except Exception as e:
-        log.error(f"[Reaction] reply failed: {e}", exc_info=True)
+    await _do_reaction_translate(message, _user_lang[payload.user_id])
 
 @bot.slash_command(description="Change the target translation language")
 async def set_lang(
