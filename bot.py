@@ -9,6 +9,23 @@ log = get_logger("bot")
 intents = discord.Intents.default()
 intents.voice_states = True
 intents.members = True
+intents.reactions = True
+
+# Discord locale code → translation language code
+_LOCALE_TO_LANG = {
+    "zh-CN": "zh-CN", "zh-TW": "zh-TW",
+    "en-US": "en", "en-GB": "en",
+    "ko": "ko", "ja": "ja",
+    "fr": "fr", "de": "de", "es-ES": "es",
+    "pt-BR": "pt", "ru": "ru", "pl": "pl",
+    "tr": "tr", "it": "it", "vi": "vi",
+    "th": "th", "ar": "ar", "id": "id",
+    "hi": "hi", "nl": "nl", "sv-SE": "sv",
+    "da": "da", "fi": "fi", "ro": "ro",
+    "hu": "hu", "cs": "cs", "uk": "uk",
+    "bg": "bg", "hr": "hr", "el": "el",
+    "no": "no",
+}
 
 bot = discord.Bot(intents=intents)
 voice_handler = VoiceHandler()
@@ -120,6 +137,43 @@ async def translate_to_en(ctx: discord.ApplicationContext, message: discord.Mess
 @bot.message_command(name="Translate → Korean")
 async def translate_to_ko(ctx: discord.ApplicationContext, message: discord.Message):
     await _translate_message_to(ctx, message, "ko")
+
+@bot.message_command(name="Translate → My Language")
+async def translate_to_my_lang(ctx: discord.ApplicationContext, message: discord.Message):
+    locale = str(ctx.interaction.locale)
+    lang = _LOCALE_TO_LANG.get(locale, locale.split("-")[0])
+    await _translate_message_to(ctx, message, lang)
+
+@bot.event
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    if str(payload.emoji) != "🌐":
+        return
+    if payload.user_id == bot.user.id:
+        return
+
+    channel = bot.get_channel(payload.channel_id)
+    if not channel:
+        return
+    try:
+        message = await channel.fetch_message(payload.message_id)
+    except Exception:
+        return
+    if not message.content:
+        return
+
+    translator = voice_handler._translator
+    try:
+        result = await translator.translate(message.content, "auto", config.TARGET_LANG)
+    except Exception as e:
+        log.error(f"Reaction translate error: {e}")
+        return
+
+    embed = discord.Embed(color=discord.Color.green())
+    embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
+    embed.add_field(name="Original", value=message.content, inline=False)
+    embed.add_field(name=f"Translation ({config.TARGET_LANG})", value=result, inline=False)
+    embed.set_footer(text=f"Engine: {translator.name} | React with 🌐 to translate")
+    await message.reply(embed=embed)
 
 @bot.slash_command(description="Change the target translation language")
 async def set_lang(
