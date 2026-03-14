@@ -186,12 +186,17 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
         log.error(f"[Reaction] translate error: {e}")
         return
 
+    log.info(f"[Reaction] translation result={result!r}")
     embed = discord.Embed(color=discord.Color.green())
     embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
     embed.add_field(name="Original", value=message.content, inline=False)
     embed.add_field(name=f"Translation ({config.TARGET_LANG})", value=result, inline=False)
     embed.set_footer(text=f"Engine: {translator.name} | React with 🌐 to translate")
-    await message.reply(embed=embed)
+    try:
+        await message.reply(embed=embed)
+        log.info("[Reaction] reply sent successfully")
+    except Exception as e:
+        log.error(f"[Reaction] reply failed: {e}", exc_info=True)
 
 @bot.slash_command(description="Change the target translation language")
 async def set_lang(
