@@ -151,13 +151,6 @@ async def translate_to_en(ctx: discord.ApplicationContext, message: discord.Mess
 async def translate_to_ko(ctx: discord.ApplicationContext, message: discord.Message):
     await _translate_message_to(ctx, message, "ko")
 
-@bot.message_command(name="Translate → French")
-async def translate_to_fr(ctx: discord.ApplicationContext, message: discord.Message):
-    await _translate_message_to(ctx, message, "fr")
-
-@bot.message_command(name="Translate → Thai")
-async def translate_to_th(ctx: discord.ApplicationContext, message: discord.Message):
-    await _translate_message_to(ctx, message, "th")
 
 @bot.message_command(name="Translate → My Language")
 async def translate_to_my_lang(ctx: discord.ApplicationContext, message: discord.Message):
