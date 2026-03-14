@@ -161,10 +161,14 @@ async def translate_to_th(ctx: discord.ApplicationContext, message: discord.Mess
 
 @bot.message_command(name="Translate → My Language")
 async def translate_to_my_lang(ctx: discord.ApplicationContext, message: discord.Message):
-    locale = str(ctx.interaction.locale)
-    lang = _LOCALE_TO_LANG.get(locale, locale.split("-")[0])
-    _user_lang[ctx.author.id] = lang  # save even before _translate_message_to
-    await _translate_message_to(ctx, message, lang)
+    log.info(f"[MyLang] invoked by user={ctx.author.id} guild={ctx.guild_id} locale={ctx.interaction.locale}")
+    try:
+        locale = str(ctx.interaction.locale)
+        lang = _LOCALE_TO_LANG.get(locale, locale.split("-")[0])
+        _user_lang[ctx.author.id] = lang
+        await _translate_message_to(ctx, message, lang)
+    except Exception as e:
+        log.error(f"[MyLang] error: {e}", exc_info=True)
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
