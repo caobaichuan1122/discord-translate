@@ -11,6 +11,17 @@ intents.voice_states = True
 intents.members = True
 intents.reactions = True
 
+# Cache of user_id → preferred language (learned from interaction locale)
+_user_lang: dict[int, str] = {}
+
+def _get_lang_for_user(user_id: int) -> str:
+    return _user_lang.get(user_id, config.TARGET_LANG)
+
+def _save_user_locale(interaction: discord.Interaction):
+    locale = str(interaction.locale)
+    lang = _LOCALE_TO_LANG.get(locale, locale.split("-")[0])
+    _user_lang[interaction.user.id] = lang
+
 # Discord locale code → translation language code
 _LOCALE_TO_LANG = {
     "zh-CN": "zh-CN", "zh-TW": "zh-TW",
@@ -107,6 +118,7 @@ async def translate(
     await ctx.followup.send(embed=embed)
 
 async def _translate_message_to(ctx: discord.ApplicationContext, message: discord.Message, lang: str):
+    _save_user_locale(ctx.interaction)
     await ctx.defer(ephemeral=True)
     if not message.content:
         await ctx.followup.send("❌ This message has no text to translate.", ephemeral=True)
@@ -151,6 +163,7 @@ async def translate_to_th(ctx: discord.ApplicationContext, message: discord.Mess
 async def translate_to_my_lang(ctx: discord.ApplicationContext, message: discord.Message):
     locale = str(ctx.interaction.locale)
     lang = _LOCALE_TO_LANG.get(locale, locale.split("-")[0])
+    _user_lang[ctx.author.id] = lang  # save even before _translate_message_to
     await _translate_message_to(ctx, message, lang)
 
 @bot.event
@@ -179,9 +192,10 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
         log.warning("[Reaction] message has no text content, skipping")
         return
 
+    lang = _get_lang_for_user(payload.user_id)
     translator = voice_handler._translator
     try:
-        result = await translator.translate(message.content, "auto", config.TARGET_LANG)
+        result = await translator.translate(message.content, "auto", lang)
     except Exception as e:
         log.error(f"[Reaction] translate error: {e}")
         return
@@ -190,7 +204,7 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     embed = discord.Embed(color=discord.Color.green())
     embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
     embed.add_field(name="Original", value=message.content, inline=False)
-    embed.add_field(name=f"Translation ({config.TARGET_LANG})", value=result, inline=False)
+    embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
     embed.set_footer(text=f"Engine: {translator.name} | React with 🌐 to translate")
     try:
         await message.reply(embed=embed)
