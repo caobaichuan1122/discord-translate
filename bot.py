@@ -270,6 +270,26 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
     await _do_reaction_translate(message, _user_lang[payload.user_id])
 
+@bot.slash_command(description="Set your personal translation language for 🌐 reactions")
+async def my_lang(ctx: discord.ApplicationContext):
+    current = _user_lang.get(ctx.author.id, config.TARGET_LANG)
+    view = _MyLangView(ctx.author.id)
+    await ctx.respond(f"当前语言：**{current}**，请选择新的目标语言：", view=view, ephemeral=True)
+
+
+class _MyLangView(discord.ui.View):
+    def __init__(self, user_id: int):
+        super().__init__(timeout=30)
+        self.user_id = user_id
+
+    @discord.ui.select(placeholder="选择语言 / Select language...", options=_LanguageSelectView._OPTIONS)
+    async def select_language(self, select: discord.ui.Select, interaction: discord.Interaction):
+        lang = select.values[0]
+        _user_lang[self.user_id] = lang
+        self.stop()
+        await interaction.response.edit_message(content=f"✅ 已将你的翻译语言设置为 **{lang}**", view=None)
+
+
 @bot.slash_command(description="Change the target translation language")
 async def set_lang(
     ctx: discord.ApplicationContext,
