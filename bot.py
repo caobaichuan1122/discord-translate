@@ -165,20 +165,25 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     if not channel:
         try:
             channel = await bot.fetch_channel(payload.channel_id)
-        except Exception:
+        except Exception as e:
+            log.error(f"[Reaction] fetch_channel failed: {e}")
             return
+    log.info(f"[Reaction] channel={channel}")
     try:
         message = await channel.fetch_message(payload.message_id)
-    except Exception:
+    except Exception as e:
+        log.error(f"[Reaction] fetch_message failed: {e}")
         return
+    log.info(f"[Reaction] message.content={message.content!r}")
     if not message.content:
+        log.warning("[Reaction] message has no text content, skipping")
         return
 
     translator = voice_handler._translator
     try:
         result = await translator.translate(message.content, "auto", config.TARGET_LANG)
     except Exception as e:
-        log.error(f"Reaction translate error: {e}")
+        log.error(f"[Reaction] translate error: {e}")
         return
 
     embed = discord.Embed(color=discord.Color.green())
