@@ -146,6 +146,7 @@ async def translate_to_my_lang(ctx: discord.ApplicationContext, message: discord
 
 @bot.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    log.info(f"[Reaction] emoji={str(payload.emoji)!r} user={payload.user_id}")
     if str(payload.emoji) != "🌐":
         return
     if payload.user_id == bot.user.id:
