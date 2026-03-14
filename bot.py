@@ -153,7 +153,10 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
     channel = bot.get_channel(payload.channel_id)
     if not channel:
-        return
+        try:
+            channel = await bot.fetch_channel(payload.channel_id)
+        except Exception:
+            return
     try:
         message = await channel.fetch_message(payload.message_id)
     except Exception:
