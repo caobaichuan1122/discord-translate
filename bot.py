@@ -184,6 +184,15 @@ async def translate_to_my_lang(ctx: discord.ApplicationContext, message: discord
     except Exception as e:
         log.error(f"[MyLang] error: {e}", exc_info=True)
 
+class _DeleteView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(emoji="🗑️", style=discord.ButtonStyle.secondary)
+    async def delete(self, button: discord.ui.Button, interaction: discord.Interaction):
+        await interaction.message.delete()
+
+
 async def _do_reaction_translate(message: discord.Message, lang: str):
     translator = voice_handler._translator
     try:
@@ -197,7 +206,7 @@ async def _do_reaction_translate(message: discord.Message, lang: str):
     embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
     embed.set_footer(text=f"Engine: {voice_handler._translator.name}")
     try:
-        await message.reply(embed=embed)
+        await message.reply(embed=embed, view=_DeleteView())
     except Exception as e:
         log.error(f"[Reaction] reply failed: {e}", exc_info=True)
 
