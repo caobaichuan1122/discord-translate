@@ -293,10 +293,11 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
 
 @bot.slash_command(description="Set your personal translation language for 🌐 reactions")
 async def my_lang(ctx: discord.ApplicationContext):
+    await ctx.defer(ephemeral=True)
     current = _user_lang.get(ctx.author.id, config.TARGET_LANG)
     view = _MyLangView(ctx.author.id)
     prompt = await _ui(ctx.author.id, f"Current language: **{current}**. Select a new language:")
-    await ctx.respond(prompt, view=view, ephemeral=True)
+    await ctx.followup.send(prompt, view=view, ephemeral=True)
 
 
 class _MyLangView(discord.ui.View):
