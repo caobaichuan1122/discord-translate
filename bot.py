@@ -193,7 +193,7 @@ class _DeleteView(discord.ui.View):
         await interaction.message.delete()
 
 
-async def _do_reaction_translate(message: discord.Message, lang: str):
+async def _do_reaction_translate(message: discord.Message, lang: str, user: discord.User):
     translator = voice_handler._translator
     try:
         result = await translator.translate(message.content, "auto", lang)
@@ -204,11 +204,12 @@ async def _do_reaction_translate(message: discord.Message, lang: str):
     embed.set_author(name=message.author.display_name, icon_url=message.author.display_avatar.url)
     embed.add_field(name="Original", value=message.content, inline=False)
     embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
-    embed.set_footer(text=f"Engine: {voice_handler._translator.name}")
+    embed.set_footer(text=f"Engine: {translator.name}")
     try:
+        await user.send(embed=embed)
+    except discord.Forbidden:
+        # DM blocked, fall back to channel reply
         await message.reply(embed=embed, view=_DeleteView())
-    except Exception as e:
-        log.error(f"[Reaction] reply failed: {e}", exc_info=True)
 
 
 class _LanguageSelectView(discord.ui.View):
@@ -259,7 +260,7 @@ class _LanguageSelectView(discord.ui.View):
         embed.add_field(name="Original", value=self.message.content, inline=False)
         embed.add_field(name=f"Translation ({lang})", value=result, inline=False)
         embed.set_footer(text=f"{saved_msg} | Engine: {translator.name}")
-        await interaction.response.edit_message(content=None, embed=embed, view=None)
+        await interaction.response.edit_message(content=saved_msg, embed=embed, view=None)
 
     async def on_timeout(self):
         pass
@@ -291,14 +292,19 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
         log.warning("[Reaction] message has no text content, skipping")
         return
 
+    user = await bot.fetch_user(payload.user_id)
+
     if payload.user_id not in _user_lang:
         # First time: show language selection
         view = _LanguageSelectView(message, payload.user_id)
         prompt = await _ui(payload.user_id, "Select your translation language (🌐 will use it automatically next time):")
-        await message.reply(f"<@{payload.user_id}> {prompt}", view=view)
+        try:
+            await user.send(f"{prompt}", view=view)
+        except discord.Forbidden:
+            await message.reply(f"<@{payload.user_id}> {prompt}", view=view)
         return
 
-    await _do_reaction_translate(message, _user_lang[payload.user_id])
+    await _do_reaction_translate(message, _user_lang[payload.user_id], user)
 
 @bot.slash_command(description="Set your personal translation language for 🌐 reactions")
 async def my_lang(ctx: discord.ApplicationContext):
